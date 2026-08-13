@@ -2,11 +2,42 @@ import "./style.css";
 
 // RIVA frontend logic
 // The original single-file logic is preserved here and split from the HTML.
-// @ts-nocheck
+/* =========================================================
+   TYPES
+========================================================= */
+type Gender = "men" | "women";
+
+interface Category {
+  slug: string;
+  label: string;
+  icon: string;
+}
+
+interface Product {
+  id: number;
+  gender: Gender;
+  cat: string;
+  catLabel: string;
+  icon: string;
+  name: string;
+  price: number;
+  old: number;
+  tag: string | null;
+  desc: string;
+  sizes: string[];
+  image: string;
+}
+
+interface CartItem {
+  id: number;
+  size: string;
+  qty: number;
+}
+
 /* =========================================================
    DATA
 ========================================================= */
-const CATEGORIES = {
+const CATEGORIES: Record<Gender, Category[]> = {
   men: [
     { slug: "tees", label: "Tees", icon: "👕" },
     { slug: "hoodies", label: "Hoodies", icon: "🧥" },
@@ -32,7 +63,7 @@ const CATEGORIES = {
 // Replace these with your own image URLs (one per category slug).
 // This object is shared by category tiles AND product ticket cards.
 
-const PRODUCT_IMAGES = {
+const PRODUCT_IMAGES: Record<Gender, Record<string, string[]>> = {
   men: {
     tees: [
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS6se0lnHOljR3LHq7c0S4bwgyzEQVitYKVyLwJajZArg&s=10",
@@ -150,7 +181,7 @@ const PRODUCT_IMAGES = {
   },
 };
 
-const CATEGORY_COVERS = {
+const CATEGORY_COVERS: Record<Gender, Record<string, string>> = {
   men: {
     tees: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7fk592vArSyrjcwj2yBZoWrOHBJJMtM8T7s1FhFwaCw&s=10",
     hoodies:
@@ -188,18 +219,18 @@ const CATEGORY_COVERS = {
   },
 };
 
-const NAME_VARIANTS = ["Classic", "Drop", "Signature", "Noise"];
-const TAGS = ["Bestseller", "New", null, null];
-const DESCRIPTIONS = [
+const NAME_VARIANTS: string[] = ["Classic", "Drop", "Signature", "Noise"];
+const TAGS: (string | null)[] = ["Bestseller", "New", null, null];
+const DESCRIPTIONS: string[] = [
   "Cut oversized with a heavyweight cotton blend, garment-washed for a broken-in feel from day one.",
   "Streetwear staple built for everyday rotation — relaxed fit, reinforced stitching, made to last through every wear.",
   "A Riva signature piece. Boxy silhouette, premium fabric, finished with subtle branding for a clean look.",
 ];
 
-function buildProducts() {
-  const list = [];
+function buildProducts(): Product[] {
+  const list: Product[] = [];
 
-  ["men", "women"].forEach((gender) => {
+  (["men", "women"] as Gender[]).forEach((gender) => {
     let id = gender === "men" ? 1000 : 2000;
 
     CATEGORIES[gender].forEach((cat) => {
@@ -244,31 +275,32 @@ function buildProducts() {
 
   return list;
 }
-const PRODUCTS = buildProducts();
+const PRODUCTS: Product[] = buildProducts();
 
 /* =========================================================
    STATE
 ========================================================= */
-let cart = []; // {id, size, qty}
-let homeGender = "men";
+let cart: CartItem[] = []; // {id, size, qty}
+let homeGender: Gender = "men";
 
-function findProduct(id) {
+function findProduct(id: number): Product | undefined {
   return PRODUCTS.find((p) => p.id === Number(id));
 }
-function cartTotalItems() {
+function cartTotalItems(): number {
   return cart.reduce((s, c) => s + c.qty, 0);
 }
-function cartSubtotal() {
+function cartSubtotal(): number {
   return cart.reduce((s, c) => {
     const p = findProduct(c.id);
     return s + (p ? p.price * c.qty : 0);
   }, 0);
 }
-function updateBagCount() {
-  document.getElementById("bagCount").textContent = cartTotalItems();
+function updateBagCount(): void {
+  const bagCountEl = document.getElementById("bagCount");
+  if (bagCountEl) bagCountEl.textContent = String(cartTotalItems());
 }
 
-function addToCart(id, size, qty) {
+function addToCart(id: number, size?: string, qty?: number): void {
   qty = qty || 1;
   size = size || "M";
   const existing = cart.find((c) => c.id === id && c.size === size);
@@ -279,11 +311,11 @@ function addToCart(id, size, qty) {
   }
   updateBagCount();
 }
-function removeFromCart(id, size) {
+function removeFromCart(id: number, size: string): void {
   cart = cart.filter((c) => !(c.id === id && c.size === size));
   updateBagCount();
 }
-function setQty(id, size, qty) {
+function setQty(id: number, size: string, qty: number): void {
   const item = cart.find((c) => c.id === id && c.size === size);
   if (item) {
     item.qty = Math.max(1, qty);
@@ -294,21 +326,24 @@ function setQty(id, size, qty) {
 /* =========================================================
    TIMERS + TRUST + NEWSLETTER
 ========================================================= */
-const trustWords = [
+const trustWords: string[] = [
   "100% ORIGINAL",
   "COD AVAILABLE",
   "EASY 7-DAY RETURNS",
   "PAN-INDIA DELIVERY",
   "SECURE PAYMENTS",
 ];
-document.getElementById("trustTrack").innerHTML = trustWords
-  .map((w) => `<span>${w}</span>`)
-  .join("")
-  .repeat(2);
+const trustTrackEl = document.getElementById("trustTrack");
+if (trustTrackEl) {
+  trustTrackEl.innerHTML = trustWords
+    .map((w) => `<span>${w}</span>`)
+    .join("")
+    .repeat(2);
+}
 
-document.querySelectorAll(".deal-timer").forEach((el) => {
-  let totalSeconds = parseFloat(el.dataset.hours) * 3600;
-  function render() {
+document.querySelectorAll<HTMLElement>(".deal-timer").forEach((el) => {
+  let totalSeconds = parseFloat(el.dataset.hours || "0") * 3600;
+  function render(): void {
     const h = Math.floor(totalSeconds / 3600),
       m = Math.floor((totalSeconds % 3600) / 60),
       s = Math.floor(totalSeconds % 60);
@@ -323,17 +358,25 @@ document.querySelectorAll(".deal-timer").forEach((el) => {
   }, 1000);
 });
 
-document.getElementById("newsForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  document.getElementById("newsMsg").textContent =
-    "You're on the list. First drop hits your inbox soon.";
-  e.target.reset();
-});
+const newsFormEl = document.getElementById(
+  "newsForm",
+) as HTMLFormElement | null;
+if (newsFormEl) {
+  newsFormEl.addEventListener("submit", (e: SubmitEvent) => {
+    e.preventDefault();
+    const newsMsgEl = document.getElementById("newsMsg");
+    if (newsMsgEl) {
+      newsMsgEl.textContent =
+        "You're on the list. First drop hits your inbox soon.";
+    }
+    (e.target as HTMLFormElement).reset();
+  });
+}
 
 /* =========================================================
    RENDER HELPERS
 ========================================================= */
-function ticketCard(p) {
+function ticketCard(p: Product): string {
   return `
   <div class="ticket" data-goto="product" data-id="${p.id}">
     <div class="ticket-img">${p.tag ? `<span class="ticket-tag">${p.tag}</span>` : ""}<img src="${p.image}" alt="${p.name}" loading="lazy"></div>
@@ -346,7 +389,7 @@ function ticketCard(p) {
   </div>`;
 }
 
-function catCard(gender, cat) {
+function catCard(gender: Gender, cat: Category): string {
   const count = PRODUCTS.filter(
     (p) => p.gender === gender && p.cat === cat.slug,
   ).length;
@@ -379,34 +422,40 @@ function catCard(gender, cat) {
   </button>`;
 }
 
-function renderHomeCategories() {
-  document.getElementById("homeCatGrid").innerHTML = CATEGORIES[homeGender]
-    .map((c) => catCard(homeGender, c))
-    .join("");
+function renderHomeCategories(): void {
+  const homeCatGridEl = document.getElementById("homeCatGrid");
+  if (homeCatGridEl) {
+    homeCatGridEl.innerHTML = CATEGORIES[homeGender]
+      .map((c) => catCard(homeGender, c))
+      .join("");
+  }
 }
-function renderHomeProducts() {
+function renderHomeProducts(): void {
   const picks = PRODUCTS.filter((p) => p.tag === "Bestseller").slice(0, 8);
-  document.getElementById("homeProductGrid").innerHTML = picks
-    .map(ticketCard)
-    .join("");
+  const homeProductGridEl = document.getElementById("homeProductGrid");
+  if (homeProductGridEl) {
+    homeProductGridEl.innerHTML = picks.map(ticketCard).join("");
+  }
 }
 renderHomeCategories();
 renderHomeProducts();
 
-document.querySelectorAll("[data-homegender]").forEach((btn) => {
+document.querySelectorAll<HTMLElement>("[data-homegender]").forEach((btn) => {
   btn.addEventListener("click", () => {
     document
-      .querySelectorAll("[data-homegender]")
+      .querySelectorAll<HTMLElement>("[data-homegender]")
       .forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    homeGender = btn.dataset.homegender;
+    homeGender = (btn.dataset.homegender as Gender) || "men";
     renderHomeCategories();
   });
 });
 
 /* Single delegated click handler for ALL internal navigation — no <a href>, no real navigation, so no interceptor dialog */
-document.body.addEventListener("click", (e) => {
-  const quick = e.target.closest("[data-quickadd]");
+document.body.addEventListener("click", (e: MouseEvent) => {
+  const target = e.target as HTMLElement;
+
+  const quick = target.closest<HTMLElement>("[data-quickadd]");
   if (quick) {
     e.stopPropagation();
     const id = Number(quick.dataset.quickadd);
@@ -419,7 +468,7 @@ document.body.addEventListener("click", (e) => {
     }, 1600);
     return;
   }
-  const goto = e.target.closest("[data-goto]");
+  const goto = target.closest<HTMLElement>("[data-goto]");
   if (goto) {
     if (goto.dataset.goto === "list") {
       navigate(`/shop/${goto.dataset.gender}/${goto.dataset.cat}`);
@@ -429,8 +478,8 @@ document.body.addEventListener("click", (e) => {
     }
     return;
   }
-  const nav = e.target.closest("[data-nav]");
-  if (nav) {
+  const nav = target.closest<HTMLElement>("[data-nav]");
+  if (nav && nav.dataset.nav) {
     navigate(nav.dataset.nav);
   }
 });
@@ -441,110 +490,139 @@ document.body.addEventListener("click", (e) => {
 ========================================================= */
 let currentRoute = "/";
 
-function navigate(path) {
+function navigate(path: string): void {
   currentRoute = path;
   history.pushState({ path }, "", location.pathname + location.search);
   render();
   window.scrollTo({ top: 0, behavior: "auto" });
 }
-window.addEventListener("popstate", (e) => {
+window.addEventListener("popstate", (e: PopStateEvent) => {
   currentRoute = (e.state && e.state.path) || "/";
   render();
 });
 
-function showView(id) {
+function showView(id: string): void {
   document
     .querySelectorAll(".view")
     .forEach((v) => v.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
+  const el = document.getElementById(id);
+  if (el) el.classList.add("active");
 }
 
-function crumbBtn(label, path) {
+function crumbBtn(label: string, path: string): string {
   return `<button data-nav="${path}">${label}</button>`;
 }
 
-function renderShop(gender) {
-  document.getElementById("shopGenderLabel").textContent =
-    gender === "men" ? "Men" : "Women";
-  document.getElementById("shopTag").textContent =
-    gender === "men" ? "Men's collection" : "Women's collection";
-  document.getElementById("shopTitle").textContent = "Pick a category";
-  document.getElementById("shopCatGrid").innerHTML = CATEGORIES[gender]
-    .map((c) => catCard(gender, c))
-    .join("");
+function renderShop(gender: Gender): void {
+  const shopGenderLabelEl = document.getElementById("shopGenderLabel");
+  if (shopGenderLabelEl) {
+    shopGenderLabelEl.textContent = gender === "men" ? "Men" : "Women";
+  }
+  const shopTagEl = document.getElementById("shopTag");
+  if (shopTagEl) {
+    shopTagEl.textContent =
+      gender === "men" ? "Men's collection" : "Women's collection";
+  }
+  const shopTitleEl = document.getElementById("shopTitle");
+  if (shopTitleEl) shopTitleEl.textContent = "Pick a category";
+  const shopCatGridEl = document.getElementById("shopCatGrid");
+  if (shopCatGridEl) {
+    shopCatGridEl.innerHTML = CATEGORIES[gender]
+      .map((c) => catCard(gender, c))
+      .join("");
+  }
   showView("view-shop");
 }
 
-function renderList(gender, catSlug) {
+function renderList(gender: Gender, catSlug: string): void {
   const cats = CATEGORIES[gender];
   const cat = cats.find((c) => c.slug === catSlug) || cats[0];
 
-  document.getElementById("listBreadcrumb").innerHTML =
-    crumbBtn("Home", "/") +
-    '<span class="sep">/</span>' +
-    crumbBtn(gender === "men" ? "Men" : "Women", `/shop/${gender}`) +
-    '<span class="sep">/</span>' +
-    `<span class="current">${cat.label}</span>`;
+  const listBreadcrumbEl = document.getElementById("listBreadcrumb");
+  if (listBreadcrumbEl) {
+    listBreadcrumbEl.innerHTML =
+      crumbBtn("Home", "/") +
+      '<span class="sep">/</span>' +
+      crumbBtn(gender === "men" ? "Men" : "Women", `/shop/${gender}`) +
+      '<span class="sep">/</span>' +
+      `<span class="current">${cat.label}</span>`;
+  }
 
-  document.getElementById("listTag").textContent =
-    gender === "men" ? "Men" : "Women";
-  document.getElementById("listTitle").textContent = cat.label;
+  const listTagEl = document.getElementById("listTag");
+  if (listTagEl) listTagEl.textContent = gender === "men" ? "Men" : "Women";
+  const listTitleEl = document.getElementById("listTitle");
+  if (listTitleEl) listTitleEl.textContent = cat.label;
 
   const bar = document.getElementById("listFilterBar");
-  bar.innerHTML = cats
-    .map(
-      (c) =>
-        `<button class="chip ${c.slug === cat.slug ? "active" : ""}" data-filtercat="${c.slug}">${c.label}</button>`,
-    )
-    .join("");
-  bar.querySelectorAll("[data-filtercat]").forEach((btn) => {
-    btn.addEventListener("click", () =>
-      navigate(`/shop/${gender}/${btn.dataset.filtercat}`),
-    );
-  });
+  if (bar) {
+    bar.innerHTML = cats
+      .map(
+        (c) =>
+          `<button class="chip ${c.slug === cat.slug ? "active" : ""}" data-filtercat="${c.slug}">${c.label}</button>`,
+      )
+      .join("");
+    bar.querySelectorAll<HTMLElement>("[data-filtercat]").forEach((btn) => {
+      btn.addEventListener("click", () =>
+        navigate(`/shop/${gender}/${btn.dataset.filtercat}`),
+      );
+    });
+  }
 
   const items = PRODUCTS.filter(
     (p) => p.gender === gender && p.cat === cat.slug,
   );
-  document.getElementById("listProductGrid").innerHTML = items
-    .map(ticketCard)
-    .join("");
-  document.getElementById("listEmpty").style.display = items.length
-    ? "none"
-    : "block";
+  const listProductGridEl = document.getElementById("listProductGrid");
+  if (listProductGridEl) {
+    listProductGridEl.innerHTML = items.map(ticketCard).join("");
+  }
+  const listEmptyEl = document.getElementById("listEmpty");
+  if (listEmptyEl) {
+    listEmptyEl.style.display = items.length ? "none" : "block";
+  }
   showView("view-list");
 }
 
-function renderProduct(id) {
-  const p = findProduct(id);
+function renderProduct(id: string | number): void {
+  const p = findProduct(Number(id));
   if (!p) {
     navigate("/");
     return;
   }
 
-  document.getElementById("pdpBreadcrumb").innerHTML =
-    crumbBtn("Home", "/") +
-    '<span class="sep">/</span>' +
-    crumbBtn(p.gender === "men" ? "Men" : "Women", `/shop/${p.gender}`) +
-    '<span class="sep">/</span>' +
-    crumbBtn(p.catLabel, `/shop/${p.gender}/${p.cat}`) +
-    '<span class="sep">/</span>' +
-    `<span class="current">${p.name}</span>`;
+  const pdpBreadcrumbEl = document.getElementById("pdpBreadcrumb");
+  if (pdpBreadcrumbEl) {
+    pdpBreadcrumbEl.innerHTML =
+      crumbBtn("Home", "/") +
+      '<span class="sep">/</span>' +
+      crumbBtn(p.gender === "men" ? "Men" : "Women", `/shop/${p.gender}`) +
+      '<span class="sep">/</span>' +
+      crumbBtn(p.catLabel, `/shop/${p.gender}/${p.cat}`) +
+      '<span class="sep">/</span>' +
+      `<span class="current">${p.name}</span>`;
+  }
 
-  let selectedSize = p.sizes[1];
+  // Give the narrowed product a concrete typed binding: TS's control-flow
+  // narrowing of `p` from the guard above does not persist inside the
+  // nested renderPdp() closure, so we bind it to a fixed `Product` here.
+  const product: Product = p;
+
+  let selectedSize: string = product.sizes[1];
   let qty = 1;
 
-  function renderPdp() {
-    document.getElementById("pdpContent").innerHTML = `
-      <div class="pdp-img"><img src="${p.image}" alt="${p.name}"></div>
+  function renderPdp(): void {
+    const pdpContentEl = document.getElementById("pdpContent");
+    if (!pdpContentEl) return;
+
+    pdpContentEl.innerHTML = `
+      <div class="pdp-img"><img src="${product.image}" alt="${product.name}"></div>
       <div>
-        ${p.tag ? `<span class="pdp-tag">${p.tag}</span>` : ""}
-        <h1 class="pdp-name display">${p.name}</h1>
-        <div class="pdp-price"><span class="now">₹${p.price}</span><span class="old">₹${p.old}</span></div>
-        <p class="pdp-desc">${p.desc}</p>
+        ${product.tag ? `<span class="pdp-tag">${product.tag}</span>` : ""}
+        <h1 class="pdp-name display">${product.name}</h1>
+        <div class="pdp-price"><span class="now">₹${product.price}</span><span class="old">₹${product.old}</span></div>
+        <p class="pdp-desc">${product.desc}</p>
         <div class="pdp-label">Select size</div>
         <div class="size-row" id="sizeRow">
-          ${p.sizes.map((s) => `<button class="size-chip ${s === selectedSize ? "active" : ""}" data-size="${s}">${s}</button>`).join("")}
+          ${product.sizes.map((s) => `<button class="size-chip ${s === selectedSize ? "active" : ""}" data-size="${s}">${s}</button>`).join("")}
         </div>
         <div class="pdp-label">Quantity</div>
         <div class="qty-row">
@@ -553,42 +631,55 @@ function renderProduct(id) {
           </div>
         </div>
         <div class="pdp-actions">
-          <button class="btn-primary" id="pdpAddBtn" style="text-align:center;">Add to bag — ₹${p.price * qty}</button>
-          <button class="btn-outline" data-nav="/shop/${p.gender}/${p.cat}" style="text-align:center;">Back to ${p.catLabel}</button>
+          <button class="btn-primary" id="pdpAddBtn" style="text-align:center;">Add to bag — ₹${product.price * qty}</button>
+          <button class="btn-outline" data-nav="/shop/${product.gender}/${product.cat}" style="text-align:center;">Back to ${product.catLabel}</button>
         </div>
-        <div class="pdp-meta">SKU: RIVA-${p.id} · Category: ${p.catLabel}<br>Free shipping on orders above ₹999 · 7-day easy returns</div>
+        <div class="pdp-meta">SKU: RIVA-${product.id} · Category: ${product.catLabel}<br>Free shipping on orders above ₹999 · 7-day easy returns</div>
       </div>`;
 
-    document.querySelectorAll("#sizeRow .size-chip").forEach((chip) => {
-      chip.addEventListener("click", () => {
-        selectedSize = chip.dataset.size;
+    document
+      .querySelectorAll<HTMLElement>("#sizeRow .size-chip")
+      .forEach((chip) => {
+        chip.addEventListener("click", () => {
+          selectedSize = chip.dataset.size || selectedSize;
+          renderPdp();
+        });
+      });
+
+    const qtyMinusEl = document.getElementById("qtyMinus");
+    if (qtyMinusEl) {
+      qtyMinusEl.addEventListener("click", () => {
+        qty = Math.max(1, qty - 1);
         renderPdp();
       });
-    });
-    document.getElementById("qtyMinus").addEventListener("click", () => {
-      qty = Math.max(1, qty - 1);
-      renderPdp();
-    });
-    document.getElementById("qtyPlus").addEventListener("click", () => {
-      qty = qty + 1;
-      renderPdp();
-    });
-    document.getElementById("pdpAddBtn").addEventListener("click", () => {
-      addToCart(p.id, selectedSize, qty);
-      const btn = document.getElementById("pdpAddBtn");
-      const original = btn.textContent;
-      btn.textContent = "Added to bag ✓";
-      setTimeout(() => {
-        btn.textContent = original;
-      }, 1500);
-    });
+    }
+    const qtyPlusEl = document.getElementById("qtyPlus");
+    if (qtyPlusEl) {
+      qtyPlusEl.addEventListener("click", () => {
+        qty = qty + 1;
+        renderPdp();
+      });
+    }
+    const pdpAddBtnEl = document.getElementById("pdpAddBtn");
+    if (pdpAddBtnEl) {
+      pdpAddBtnEl.addEventListener("click", () => {
+        addToCart(product.id, selectedSize, qty);
+        const original = pdpAddBtnEl.textContent;
+        pdpAddBtnEl.textContent = "Added to bag ✓";
+        setTimeout(() => {
+          pdpAddBtnEl.textContent = original;
+        }, 1500);
+      });
+    }
   }
   renderPdp();
   showView("view-product");
 }
 
-function renderCart() {
+function renderCart(): void {
   const wrap = document.getElementById("cartWrap");
+  if (!wrap) return;
+
   if (cart.length === 0) {
     wrap.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Your bag is empty. <button data-nav="/shop/men">Start shopping →</button></div>`;
     return;
@@ -596,6 +687,7 @@ function renderCart() {
   const itemsHTML = cart
     .map((c) => {
       const p = findProduct(c.id);
+      if (!p) return "";
       return `
     <div class="cart-item">
       <div class="cart-item-img"><img src="${p.image}" alt="${p.name}"></div>
@@ -629,34 +721,37 @@ function renderCart() {
       <button class="btn-primary" data-nav="/checkout" style="display:block; width:100%; text-align:center; margin-top:20px;">Proceed to checkout</button>
     </div>`;
 
-  wrap.querySelectorAll("[data-inc]").forEach((b) =>
+  wrap.querySelectorAll<HTMLElement>("[data-inc]").forEach((b) =>
     b.addEventListener("click", () => {
       const item = cart.find(
-        (c) => c.id == b.dataset.inc && c.size === b.dataset.size,
+        (c) => c.id === Number(b.dataset.inc) && c.size === b.dataset.size,
       );
-      setQty(item.id, item.size, item.qty + 1);
+      if (item) setQty(item.id, item.size, item.qty + 1);
       renderCart();
     }),
   );
-  wrap.querySelectorAll("[data-dec]").forEach((b) =>
+  wrap.querySelectorAll<HTMLElement>("[data-dec]").forEach((b) =>
     b.addEventListener("click", () => {
       const item = cart.find(
-        (c) => c.id == b.dataset.dec && c.size === b.dataset.size,
+        (c) => c.id === Number(b.dataset.dec) && c.size === b.dataset.size,
       );
-      setQty(item.id, item.size, item.qty - 1);
+      if (item) setQty(item.id, item.size, item.qty - 1);
       renderCart();
     }),
   );
-  wrap.querySelectorAll("[data-remove]").forEach((b) =>
+  wrap.querySelectorAll<HTMLElement>("[data-remove]").forEach((b) =>
     b.addEventListener("click", () => {
-      removeFromCart(Number(b.dataset.remove), b.dataset.size);
+      const size = b.dataset.size || "";
+      removeFromCart(Number(b.dataset.remove), size);
       renderCart();
     }),
   );
 }
 
-function renderCheckout() {
+function renderCheckout(): void {
   const wrap = document.getElementById("checkoutWrap");
+  if (!wrap) return;
+
   if (cart.length === 0) {
     wrap.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Your bag is empty. <button data-nav="/shop/men">Start shopping →</button></div>`;
     return;
@@ -695,59 +790,87 @@ function renderCheckout() {
       <button class="btn-primary" id="placeOrderBtn" style="width:100%; margin-top:20px; text-align:center;">Place order</button>
     </div>`;
 
-  wrap.querySelectorAll("[data-pay]").forEach((opt) => {
+  wrap.querySelectorAll<HTMLElement>("[data-pay]").forEach((opt) => {
     opt.addEventListener("click", () => {
       wrap
-        .querySelectorAll("[data-pay]")
+        .querySelectorAll<HTMLElement>("[data-pay]")
         .forEach((o) => o.classList.remove("active"));
       opt.classList.add("active");
-      payMethod = opt.dataset.pay;
+      payMethod = opt.dataset.pay || "cod";
     });
   });
 
-  document.getElementById("placeOrderBtn").addEventListener("click", () => {
-    const name = document.getElementById("cfName").value.trim();
-    const phone = document.getElementById("cfPhone").value.trim();
-    const address = document.getElementById("cfAddress").value.trim();
-    const city = document.getElementById("cfCity").value.trim();
-    const state = document.getElementById("cfState").value.trim();
-    const pincode = document.getElementById("cfPincode").value.trim();
-    const err = document.getElementById("cfError");
-    if (!name || !phone || !address || !city || !state || !pincode) {
-      err.textContent =
-        "Please fill in all shipping details before placing your order.";
-      return;
-    }
-    if (!/^\d{10}$/.test(phone)) {
-      err.textContent = "Enter a valid 10-digit phone number.";
-      return;
-    }
-    if (!/^\d{6}$/.test(pincode)) {
-      err.textContent = "Enter a valid 6-digit pincode.";
-      return;
-    }
-    err.textContent = "";
-    const orderId = "RIVA" + Math.floor(100000 + Math.random() * 900000);
-    document.getElementById("confirmId").innerHTML =
-      `Order ID: <strong>${orderId}</strong><br>Payment: ${payMethod.toUpperCase()} · Total: ₹${total}`;
-    cart = [];
-    updateBagCount();
-    navigate("/confirmation");
-  });
+  const placeOrderBtnEl = document.getElementById("placeOrderBtn");
+  if (placeOrderBtnEl) {
+    placeOrderBtnEl.addEventListener("click", () => {
+      const nameInput = document.getElementById(
+        "cfName",
+      ) as HTMLInputElement | null;
+      const phoneInput = document.getElementById(
+        "cfPhone",
+      ) as HTMLInputElement | null;
+      const addressInput = document.getElementById(
+        "cfAddress",
+      ) as HTMLInputElement | null;
+      const cityInput = document.getElementById(
+        "cfCity",
+      ) as HTMLInputElement | null;
+      const stateInput = document.getElementById(
+        "cfState",
+      ) as HTMLInputElement | null;
+      const pincodeInput = document.getElementById(
+        "cfPincode",
+      ) as HTMLInputElement | null;
+      const err = document.getElementById("cfError");
+
+      const name = nameInput ? nameInput.value.trim() : "";
+      const phone = phoneInput ? phoneInput.value.trim() : "";
+      const address = addressInput ? addressInput.value.trim() : "";
+      const city = cityInput ? cityInput.value.trim() : "";
+      const state = stateInput ? stateInput.value.trim() : "";
+      const pincode = pincodeInput ? pincodeInput.value.trim() : "";
+
+      if (!name || !phone || !address || !city || !state || !pincode) {
+        if (err) {
+          err.textContent =
+            "Please fill in all shipping details before placing your order.";
+        }
+        return;
+      }
+      if (!/^\d{10}$/.test(phone)) {
+        if (err) err.textContent = "Enter a valid 10-digit phone number.";
+        return;
+      }
+      if (!/^\d{6}$/.test(pincode)) {
+        if (err) err.textContent = "Enter a valid 6-digit pincode.";
+        return;
+      }
+      if (err) err.textContent = "";
+
+      const orderId = "RIVA" + Math.floor(100000 + Math.random() * 900000);
+      const confirmIdEl = document.getElementById("confirmId");
+      if (confirmIdEl) {
+        confirmIdEl.innerHTML = `Order ID: <strong>${orderId}</strong><br>Payment: ${payMethod.toUpperCase()} · Total: ₹${total}`;
+      }
+      cart = [];
+      updateBagCount();
+      navigate("/confirmation");
+    });
+  }
 }
 
-function render() {
+function render(): void {
   const parts = currentRoute.split("/").filter(Boolean);
   if (parts.length === 0) {
     showView("view-home");
     return;
   }
   if (parts[0] === "shop" && parts[1] && !parts[2]) {
-    renderShop(parts[1]);
+    renderShop(parts[1] as Gender);
     return;
   }
   if (parts[0] === "shop" && parts[1] && parts[2]) {
-    renderList(parts[1], parts[2]);
+    renderList(parts[1] as Gender, parts[2]);
     return;
   }
   if (parts[0] === "product" && parts[1]) {
